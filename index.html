@@ -25,7 +25,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
     import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-    // إعدادات فايربيس
+    // إعدادات قاعدة بياناتك
     const firebaseConfig = {
         apiKey: "AIzaSyAInpnhNQp_WBlEAMGoUJe9XdLO1QarMeU",
         authDomain: "jhhj-4a7ea.firebaseapp.com",
@@ -38,40 +38,46 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const PUSHY_SECRET_API_KEY = "535840e244ec710ee3367cf08bfa5f166a67818a36cd9bff3f554cd2cf38ae8f"; 
+    // 🔑 مفاتيح OneSignal (تم وضعها لك بنجاح)
+    const ONESIGNAL_APP_ID = "cf84a72b-50f1-48eb-809a-688cc1e63599"; 
+    const ONESIGNAL_REST_API_KEY = "os_v2_app_z6ckok2q6feoxae2ncgmdzrvtg4mxam4w3iu2h5ujxujrrvtjkipfnqhqariefmdm2r6jlnb6jcxqp6qio3rkdemh4bl5pxsbw4jfka";
     
-    // ⭐ ضع التوكن الخاص بجهازك هنا بعد أن تولده من شاشة الأدمن ⭐
-    const ADMIN_DEVICE_TOKEN = "ضع_هنا_التوكن_الذي_سيظهر_في_شاشة_الأدمن"; 
+    // 📱 رمز جهازك الذي سيستقبل الإشعارات (استخرجه من شاشة الأدمن وضعه هنا)
+    const ADMIN_PLAYER_ID = "ضع_هنا_رمز_جهازك_الذي_ظهر_في_لوحة_الادمن";
 
     document.getElementById('orderBtn').addEventListener('click', async () => {
         const statusDiv = document.getElementById('status');
         statusDiv.innerText = "جاري إرسال الطلب وحفظه في قاعدة البيانات...";
 
         try {
+            // 1. حفظ الطلب في فايربيس
             await addDoc(collection(db, "orders"), {
                 productName: "منتج تجريبي",
                 price: "25,000 د.ع",
                 timestamp: serverTimestamp()
             });
 
-            statusDiv.innerText = "تم حفظ الطلب في فايربيس بنجاح! جاري إرسال الإشعار...";
+            statusDiv.innerText = "تم حفظ الطلب! جاري إرسال الإشعار الفوري...";
 
-            const response = await fetch(`https://api.pushy.me/push?api_key=${PUSHY_SECRET_API_KEY}`, {
+            // 2. إرسال الإشعار لهاتفك عبر OneSignal
+            const response = await fetch("https://onesignal.com/api/v1/notifications", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Basic ${ONESIGNAL_REST_API_KEY}`
+                },
                 body: JSON.stringify({
-                    to: ADMIN_DEVICE_TOKEN,
-                    notification: {
-                        title: "🛍️ طلب جديد للمتجر!",
-                        body: "أبو أمير، وصلك طلب شراء تجريبي جديد الآن، يرجى مراجعته."
-                    }
+                    app_id: ONESIGNAL_APP_ID,
+                    include_player_ids: [ADMIN_PLAYER_ID],
+                    headings: { "en": "🛍️ طلب جديد للمتجر!", "ar": "🛍️ طلب جديد للمتجر!" },
+                    contents: { "en": "أبو أمير، وصلك طلب شراء تجريبي جديد الآن!", "ar": "أبو أمير، وصلك طلب شراء تجريبي جديد الآن!" }
                 })
             });
 
             if (response.ok) {
-                statusDiv.innerHTML = "<b style='color:green;'>✅ تم إرسال الطلب ووصل الإشعار للأدمن بنجاح!</b>";
+                statusDiv.innerHTML = "<b style='color:green;'>✅ تم إرسال الطلب ووصلك الإشعار بنجاح!</b>";
             } else {
-                statusDiv.innerHTML = "<b style='color:orange;'>⚠️ تم حفظ الطلب، لكن فشل إرسال الإشعار. تأكد من وضع التوكن الصحيح.</b>";
+                statusDiv.innerHTML = "<b style='color:orange;'>⚠️ تم حفظ الطلب، لكن فشل الإشعار. تأكد من وضع رمز جهازك (Player ID) بشكل صحيح.</b>";
             }
 
         } catch (error) {
